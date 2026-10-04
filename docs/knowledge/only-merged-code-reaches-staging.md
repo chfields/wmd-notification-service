@@ -9,7 +9,7 @@ generated:
   at: 2026-10-04T15:29:48Z
 sources:
   - id: dockerfile
-    url: https://github.com/chfields/wmd-notification-service/blob/3fa9595165439ca1685409ed2aa9437c37f0b8fd/Dockerfile#L1-L12
+    url: https://github.com/chfields/wmd-notification-service/blob/3fa9595165439ca1685409ed2aa9437c37f0b8fd/Dockerfile#L1-L11
   - id: test-workflow
     url: https://github.com/chfields/wmd-notification-service/blob/3fa9595165439ca1685409ed2aa9437c37f0b8fd/.github/workflows/test.yml#L1-L28
   - id: canonical
@@ -22,7 +22,7 @@ wardby:
     - id: dockerfile
       repo: github:chfields/wmd-notification-service
       path: Dockerfile
-      lines: [1, 12]
+      lines: [1, 11]
       symbol: Dockerfile
       sha: 3fa9595165439ca1685409ed2aa9437c37f0b8fd
       spanHash: sha256:1872275d6b7dd1b4610c0cff3e812abbece7998217ba51a84e1f855cb3561c99
@@ -40,5 +40,5 @@ Staging runs the image built from this repository's merged main, so a change rea
 
 What to do: retain the clean image inputs and CI coverage for pull requests and `main`.
 
-[^dockerfile]: [Dockerfile](https://github.com/chfields/wmd-notification-service/blob/3fa9595165439ca1685409ed2aa9437c37f0b8fd/Dockerfile#L1-L12)
+[^dockerfile]: [Dockerfile](https://github.com/chfields/wmd-notification-service/blob/3fa9595165439ca1685409ed2aa9437c37f0b8fd/Dockerfile#L1-L11)
 [^test-workflow]: [test workflow](https://github.com/chfields/wmd-notification-service/blob/3fa9595165439ca1685409ed2aa9437c37f0b8fd/.github/workflows/test.yml#L1-L28)
