@@ -1,5 +1,9 @@
 # Working in wmd-notification-service
 
+## Architecture knowledge
+
+See [docs/knowledge/index.md](docs/knowledge/index.md).
+
 Python 3.12, FastAPI, psycopg 3, Postgres. Sends customers notifications (in-app today) and records delivery status. A retry for the same order and kind returns the first notification.
 
 ## Run the checks
