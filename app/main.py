@@ -20,6 +20,7 @@ class NotificationRequest(BaseModel):
     orderId: str = Field(min_length=1, max_length=64)
     kind: Literal["order_confirmed"]
     totalCents: int = Field(ge=0)
+    giftMessage: str | None = Field(default=None, max_length=200)
 
 
 class Notification(BaseModel):
@@ -36,7 +37,11 @@ class Notification(BaseModel):
 
 def _content(request: NotificationRequest) -> tuple[str, str]:
     total = f"${request.totalCents / 100:.2f}"
-    return "Order confirmed", f"Your order {request.orderId[:8]} for {total} is confirmed."
+    body = f"Your order {request.orderId[:8]} for {total} is confirmed."
+    gift_message = request.giftMessage.strip() if request.giftMessage else ""
+    if gift_message:
+        body += f' Gift message: "{gift_message}"'
+    return "Order confirmed", body
 
 
 def _notification(row: dict) -> Notification:

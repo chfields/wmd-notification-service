@@ -1,3 +1,5 @@
+import pytest
+
 CONFIRMED = {
     "userId": "user-1",
     "orderId": "3f2a9c1e-0000",
@@ -16,11 +18,39 @@ def test_sends_an_order_confirmation(client):
 
 
 def test_a_retry_returns_the_first_notification(client):
-    first = client.post("/v1/notifications", json=CONFIRMED).json()
+    first = client.post(
+        "/v1/notifications", json={**CONFIRMED, "giftMessage": "Happy birthday!"}
+    ).json()
     retry = client.post("/v1/notifications", json=CONFIRMED)
     assert retry.status_code == 200
     assert retry.json()["id"] == first["id"]
+    assert retry.json()["body"] == first["body"]
     assert len(client.get("/v1/notifications", params={"userId": "user-1"}).json()) == 1
+
+
+def test_includes_a_gift_message_in_an_order_confirmation(client):
+    response = client.post(
+        "/v1/notifications", json={**CONFIRMED, "giftMessage": "  Enjoy your gift!  "}
+    )
+    assert response.status_code == 201
+    assert response.json()["body"] == (
+        'Your order 3f2a9c1e for $23.46 is confirmed. Gift message: "Enjoy your gift!"'
+    )
+
+
+@pytest.mark.parametrize(
+    "gift_message", [{}, {"giftMessage": None}, {"giftMessage": ""}, {"giftMessage": "   "}]
+)
+def test_omits_an_empty_gift_message_from_an_order_confirmation(client, gift_message):
+    payload = {**CONFIRMED, "orderId": "empty-gift-message", **gift_message}
+    response = client.post("/v1/notifications", json=payload)
+    assert response.status_code == 201
+    assert response.json()["body"] == "Your order empty-gi for $23.46 is confirmed."
+
+
+def test_rejects_a_gift_message_over_200_characters(client):
+    response = client.post("/v1/notifications", json={**CONFIRMED, "giftMessage": "x" * 201})
+    assert response.status_code == 422
 
 
 def test_lists_a_users_notifications_newest_first(client):
