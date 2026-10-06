@@ -70,6 +70,23 @@
       },
       "NotificationRequest": {
         "properties": {
+          "deliveryWindow": {
+            "anyOf": [
+              {
+                "enum": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "morning",
+            "title": "Deliverywindow"
+          },
           "giftMessage": {
             "anyOf": [
               {

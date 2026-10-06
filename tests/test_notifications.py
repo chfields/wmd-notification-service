@@ -13,7 +13,9 @@ def test_sends_an_order_confirmation(client):
     assert response.status_code == 201
     body = response.json()
     assert body["title"] == "Order confirmed"
-    assert body["body"] == "Your order 3f2a9c1e for $23.46 is confirmed."
+    assert body["body"] == (
+        "Your order 3f2a9c1e for $23.46 is confirmed for delivery in the morning (8am–12pm)."
+    )
     assert (body["channel"], body["status"]) == ("in_app", "delivered")
 
 
@@ -34,7 +36,8 @@ def test_includes_a_gift_message_in_an_order_confirmation(client):
     )
     assert response.status_code == 201
     assert response.json()["body"] == (
-        'Your order 3f2a9c1e for $23.46 is confirmed. Gift message: "Enjoy your gift!"'
+        "Your order 3f2a9c1e for $23.46 is confirmed for delivery in the morning (8am–12pm). "
+        'Gift message: "Enjoy your gift!"'
     )
 
 
@@ -45,7 +48,34 @@ def test_omits_an_empty_gift_message_from_an_order_confirmation(client, gift_mes
     payload = {**CONFIRMED, "orderId": "empty-gift-message", **gift_message}
     response = client.post("/v1/notifications", json=payload)
     assert response.status_code == 201
-    assert response.json()["body"] == "Your order empty-gi for $23.46 is confirmed."
+    assert response.json()["body"] == (
+        "Your order empty-gi for $23.46 is confirmed for delivery in the morning (8am–12pm)."
+    )
+
+
+@pytest.mark.parametrize(
+    ("delivery_window", "phrase"),
+    [
+        ("morning", "morning (8am–12pm)"),
+        ("afternoon", "afternoon (12–5pm)"),
+        ("evening", "evening (5–9pm)"),
+    ],
+)
+def test_includes_the_delivery_window_in_an_order_confirmation(client, delivery_window, phrase):
+    order_id = f"order-{delivery_window}"
+    response = client.post(
+        "/v1/notifications",
+        json={**CONFIRMED, "orderId": order_id, "deliveryWindow": delivery_window},
+    )
+    assert response.status_code == 201
+    assert response.json()["body"] == (
+        f"Your order {order_id[:8]} for $23.46 is confirmed for delivery in the {phrase}."
+    )
+
+
+def test_rejects_an_invalid_delivery_window(client):
+    response = client.post("/v1/notifications", json={**CONFIRMED, "deliveryWindow": "overnight"})
+    assert response.status_code == 422
 
 
 def test_rejects_a_gift_message_over_200_characters(client):
