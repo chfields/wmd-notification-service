@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Literal
 
 from fastapi import FastAPI, Query, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.db import Database, database_from_env
 from app.observability import configure_logging, install
@@ -21,6 +21,14 @@ class NotificationRequest(BaseModel):
     kind: Literal["order_confirmed"]
     totalCents: int = Field(ge=0)
     giftMessage: str | None = Field(default=None, max_length=200)
+    deliveryWindow: Literal["morning", "afternoon", "evening"] | None = Field(
+        default="morning", validate_default=True
+    )
+
+    @field_validator("deliveryWindow", mode="before")
+    @classmethod
+    def default_delivery_window(cls, value: object) -> object:
+        return "morning" if value is None else value
 
 
 class Notification(BaseModel):
@@ -37,7 +45,15 @@ class Notification(BaseModel):
 
 def _content(request: NotificationRequest) -> tuple[str, str]:
     total = f"${request.totalCents / 100:.2f}"
-    body = f"Your order {request.orderId[:8]} for {total} is confirmed."
+    delivery_windows = {
+        "morning": "morning (8am–12pm)",
+        "afternoon": "afternoon (12–5pm)",
+        "evening": "evening (5–9pm)",
+    }
+    body = (
+        f"Your order {request.orderId[:8]} for {total} is confirmed for delivery in the "
+        f"{delivery_windows[request.deliveryWindow or 'morning']}."
+    )
     gift_message = request.giftMessage.strip() if request.giftMessage else ""
     if gift_message:
         body += f' Gift message: "{gift_message}"'

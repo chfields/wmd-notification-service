@@ -13,7 +13,9 @@ def test_sends_an_order_confirmation(client):
     assert response.status_code == 201
     body = response.json()
     assert body["title"] == "Order confirmed"
-    assert body["body"] == "Your order 3f2a9c1e for $23.46 is confirmed."
+    assert body["body"] == (
+        "Your order 3f2a9c1e for $23.46 is confirmed for delivery in the morning (8am–12pm)."
+    )
     assert (body["channel"], body["status"]) == ("in_app", "delivered")
 
 
@@ -34,8 +36,38 @@ def test_includes_a_gift_message_in_an_order_confirmation(client):
     )
     assert response.status_code == 201
     assert response.json()["body"] == (
-        'Your order 3f2a9c1e for $23.46 is confirmed. Gift message: "Enjoy your gift!"'
+        "Your order 3f2a9c1e for $23.46 is confirmed for delivery in the "
+        'morning (8am–12pm). Gift message: "Enjoy your gift!"'
     )
+
+
+@pytest.mark.parametrize(
+    ("delivery_window", "label"),
+    [
+        ("morning", "morning (8am–12pm)"),
+        ("afternoon", "afternoon (12–5pm)"),
+        ("evening", "evening (5–9pm)"),
+    ],
+)
+def test_includes_the_delivery_window_in_an_order_confirmation(client, delivery_window, label):
+    response = client.post(
+        "/v1/notifications", json={**CONFIRMED, "deliveryWindow": delivery_window}
+    )
+    assert response.status_code == 201
+    assert response.json()["body"] == (
+        f"Your order 3f2a9c1e for $23.46 is confirmed for delivery in the {label}."
+    )
+
+
+@pytest.mark.parametrize(
+    ("window_payload", "order_id"),
+    [({}, "missing-window"), ({"deliveryWindow": None}, "null-window")],
+)
+def test_defaults_a_missing_or_null_delivery_window_to_morning(client, window_payload, order_id):
+    payload = {**CONFIRMED, "orderId": order_id, **window_payload}
+    response = client.post("/v1/notifications", json=payload)
+    assert response.status_code == 201
+    assert "delivery in the morning (8am–12pm)." in response.json()["body"]
 
 
 @pytest.mark.parametrize(
@@ -45,7 +77,9 @@ def test_omits_an_empty_gift_message_from_an_order_confirmation(client, gift_mes
     payload = {**CONFIRMED, "orderId": "empty-gift-message", **gift_message}
     response = client.post("/v1/notifications", json=payload)
     assert response.status_code == 201
-    assert response.json()["body"] == "Your order empty-gi for $23.46 is confirmed."
+    assert response.json()["body"] == (
+        "Your order empty-gi for $23.46 is confirmed for delivery in the morning (8am–12pm)."
+    )
 
 
 def test_rejects_a_gift_message_over_200_characters(client):
@@ -64,3 +98,11 @@ def test_lists_a_users_notifications_newest_first(client):
 def test_refuses_an_unknown_kind_and_requires_a_user(client):
     assert client.post("/v1/notifications", json={**CONFIRMED, "kind": "spam"}).status_code == 422
     assert client.get("/v1/notifications").status_code == 422
+
+
+@pytest.mark.parametrize("delivery_window", ["overnight", 1])
+def test_rejects_an_invalid_delivery_window(client, delivery_window):
+    response = client.post(
+        "/v1/notifications", json={**CONFIRMED, "deliveryWindow": delivery_window}
+    )
+    assert response.status_code == 422
