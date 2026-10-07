@@ -21,6 +21,7 @@ class NotificationRequest(BaseModel):
     kind: Literal["order_confirmed"]
     totalCents: int = Field(ge=0)
     giftMessage: str | None = Field(default=None, max_length=200)
+    deliveryWindow: Literal["morning", "afternoon", "evening"] = "morning"
 
 
 class Notification(BaseModel):
@@ -37,7 +38,15 @@ class Notification(BaseModel):
 
 def _content(request: NotificationRequest) -> tuple[str, str]:
     total = f"${request.totalCents / 100:.2f}"
-    body = f"Your order {request.orderId[:8]} for {total} is confirmed."
+    delivery_window = {
+        "morning": "morning (8am–12pm)",
+        "afternoon": "afternoon (12–5pm)",
+        "evening": "evening (5–9pm)",
+    }[request.deliveryWindow]
+    body = (
+        f"Your order {request.orderId[:8]} for {total} is confirmed for delivery in the "
+        f"{delivery_window}."
+    )
     gift_message = request.giftMessage.strip() if request.giftMessage else ""
     if gift_message:
         body += f' Gift message: "{gift_message}"'
