@@ -13,18 +13,61 @@ def test_sends_an_order_confirmation(client):
     assert response.status_code == 201
     body = response.json()
     assert body["title"] == "Order confirmed"
-    assert body["body"] == "Your order 3f2a9c1e for $23.46 is confirmed."
+    assert (
+        body["body"]
+        == "Your order 3f2a9c1e for $23.46 is confirmed for delivery in the morning (8am–12pm)."
+    )
     assert (body["channel"], body["status"]) == ("in_app", "delivered")
+
+
+@pytest.mark.parametrize(
+    ("delivery_window", "order_id", "expected_body"),
+    [
+        (
+            "morning",
+            "morning-order",
+            "Your order morning- for $23.46 is confirmed for delivery in the morning (8am–12pm).",
+        ),
+        (
+            "afternoon",
+            "afternoon-order",
+            "Your order afternoo for $23.46 is confirmed for delivery in the afternoon (12–5pm).",
+        ),
+        (
+            "evening",
+            "evening-order",
+            "Your order evening- for $23.46 is confirmed for delivery in the evening (5–9pm).",
+        ),
+    ],
+)
+def test_includes_the_delivery_window_in_an_order_confirmation(
+    client, delivery_window, order_id, expected_body
+):
+    response = client.post(
+        "/v1/notifications",
+        json={**CONFIRMED, "orderId": order_id, "deliveryWindow": delivery_window},
+    )
+    assert response.status_code == 201
+    assert response.json()["body"] == expected_body
 
 
 def test_a_retry_returns_the_first_notification(client):
     first = client.post(
-        "/v1/notifications", json={**CONFIRMED, "giftMessage": "Happy birthday!"}
+        "/v1/notifications",
+        json={
+            **CONFIRMED,
+            "deliveryWindow": "evening",
+            "giftMessage": "Happy birthday!",
+        },
     ).json()
     retry = client.post("/v1/notifications", json=CONFIRMED)
     assert retry.status_code == 200
     assert retry.json()["id"] == first["id"]
     assert retry.json()["body"] == first["body"]
+    assert retry.json()["body"] == (
+        "Your order 3f2a9c1e for $23.46 is confirmed for delivery in the evening (5–9pm). "
+        'Gift message: "Happy birthday!"'
+    )
     assert len(client.get("/v1/notifications", params={"userId": "user-1"}).json()) == 1
 
 
@@ -34,7 +77,8 @@ def test_includes_a_gift_message_in_an_order_confirmation(client):
     )
     assert response.status_code == 201
     assert response.json()["body"] == (
-        'Your order 3f2a9c1e for $23.46 is confirmed. Gift message: "Enjoy your gift!"'
+        "Your order 3f2a9c1e for $23.46 is confirmed for delivery in the morning (8am–12pm). "
+        'Gift message: "Enjoy your gift!"'
     )
 
 
@@ -45,11 +89,21 @@ def test_omits_an_empty_gift_message_from_an_order_confirmation(client, gift_mes
     payload = {**CONFIRMED, "orderId": "empty-gift-message", **gift_message}
     response = client.post("/v1/notifications", json=payload)
     assert response.status_code == 201
-    assert response.json()["body"] == "Your order empty-gi for $23.46 is confirmed."
+    assert response.json()["body"] == (
+        "Your order empty-gi for $23.46 is confirmed for delivery in the morning (8am–12pm)."
+    )
 
 
 def test_rejects_a_gift_message_over_200_characters(client):
     response = client.post("/v1/notifications", json={**CONFIRMED, "giftMessage": "x" * 201})
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("delivery_window", ["night", 1, None])
+def test_rejects_an_invalid_delivery_window(client, delivery_window):
+    response = client.post(
+        "/v1/notifications", json={**CONFIRMED, "deliveryWindow": delivery_window}
+    )
     assert response.status_code == 422
 
 
